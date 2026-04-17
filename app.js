@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // =====================
-// DB CONNECTION (PRODUCTION SAFE)
+// DB CONNECTION
 // =====================
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
@@ -23,29 +23,35 @@ const db = mysql.createConnection({
   }
 });
 
+// safer connection logging
 db.connect((err) => {
   if (err) {
-    console.error("❌ Database connection failed:");
+    console.error("❌ DB CONNECTION FAILED");
     console.error(err.code);
     console.error(err.message);
   } else {
-    console.log("✅ Connected to MySQL");
+    console.log("✅ MySQL Connected");
   }
 });
 
 // =====================
-// HOME PAGE (READ)
+// HOME ROUTE
 // =====================
 app.get("/", (req, res) => {
+  console.log("GET / HIT");
 
   db.query("SELECT * FROM students", (err, results) => {
-
+    
+    // ❗ IMPORTANT FIX: prevent crash
     if (err) {
-      return res.send(`
+      console.error("DB ERROR:", err);
+      return res.status(500).send(`
         <h1>Database Error</h1>
         <pre>${err.message}</pre>
       `);
     }
+
+    if (!results) results = [];
 
     let html = `
     <html>
@@ -61,7 +67,6 @@ app.get("/", (req, res) => {
         a { margin-right:10px; }
       </style>
     </head>
-
     <body>
 
     <div class="header">Student CRUD Dashboard</div>
@@ -82,7 +87,7 @@ app.get("/", (req, res) => {
         <h3>Student List</h3>
     `;
 
-    results.forEach(s => {
+    results.forEach((s) => {
       html += `
         <div>
           <b>${s.stud_name}</b><br>
@@ -97,7 +102,6 @@ app.get("/", (req, res) => {
     html += `
       </div>
     </div>
-
     </body>
     </html>
     `;
@@ -116,14 +120,17 @@ app.post("/add", (req, res) => {
     "INSERT INTO students (stud_name, stud_address, age) VALUES (?, ?, ?)",
     [stud_name, stud_address, age],
     (err) => {
-      if (err) return res.send(err.message);
+      if (err) {
+        console.error(err);
+        return res.status(500).send(err.message);
+      }
       res.redirect("/");
     }
   );
 });
 
 // =====================
-// EDIT PAGE
+// EDIT
 // =====================
 app.get("/edit/:id", (req, res) => {
   const id = req.params.id;
@@ -132,6 +139,8 @@ app.get("/edit/:id", (req, res) => {
     if (err) return res.send(err.message);
 
     const s = results[0];
+
+    if (!s) return res.send("Student not found");
 
     res.send(`
       <html>

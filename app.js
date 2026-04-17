@@ -9,16 +9,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// 🔍 DEBUG ENV (REMOVE LATER IF WORKING)
-console.log("===== ENV CHECK =====");
-console.log("DB_HOST =", process.env.DB_HOST);
-console.log("DB_USER =", process.env.DB_USER);
-console.log("DB_PASSWORD =", process.env.DB_PASSWORD);
-console.log("DB_NAME =", process.env.DB_NAME);
-console.log("DB_PORT =", process.env.DB_PORT);
-console.log("=====================");
-
-// DB CONNECTION
+// =====================
+// DB CONNECTION (PRODUCTION SAFE)
+// =====================
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -28,9 +21,9 @@ const db = mysql.createConnection({
   ssl: {
     rejectUnauthorized: false
   }
-}); 
+});
 
-db.connect(err => {
+db.connect((err) => {
   if (err) {
     console.error("❌ Database connection failed:");
     console.error(err.code);
@@ -40,304 +33,162 @@ db.connect(err => {
   }
 });
 
-// MAIN PAGE
+// =====================
+// HOME PAGE (READ)
+// =====================
 app.get("/", (req, res) => {
 
   db.query("SELECT * FROM students", (err, results) => {
 
+    if (err) {
+      return res.send(`
+        <h1>Database Error</h1>
+        <pre>${err.message}</pre>
+      `);
+    }
+
     let html = `
-<html>
+    <html>
+    <head>
+      <title>Student CRUD</title>
+      <style>
+        body { font-family: Arial; background:#f0f2f5; margin:0; }
+        .header { background:#1877f2; color:white; padding:15px; font-size:20px; }
+        .container { width:70%; margin:auto; margin-top:20px; }
+        .card { background:white; padding:15px; margin-bottom:15px; border-radius:8px; }
+        input { width:95%; padding:10px; margin:5px 0; }
+        button { background:#1877f2; color:white; border:none; padding:10px 15px; cursor:pointer; }
+        a { margin-right:10px; }
+      </style>
+    </head>
 
-<head>
+    <body>
 
-<title>Student System</title>
+    <div class="header">Student CRUD Dashboard</div>
 
-<style>
+    <div class="container">
 
-body {
-  font-family: Arial;
-  margin: 0;
-  background: #f0f2f5;
-}
+      <div class="card">
+        <h3>Add Student</h3>
+        <form method="POST" action="/add">
+          <input name="stud_name" placeholder="Name" required>
+          <input name="stud_address" placeholder="Address" required>
+          <input name="age" placeholder="Age" required>
+          <button type="submit">Add</button>
+        </form>
+      </div>
 
-/* Facebook-style header */
+      <div class="card">
+        <h3>Student List</h3>
+    `;
 
-.header {
-  background: #1877f2;
-  color: white;
-  padding: 15px;
-  font-size: 22px;
-  font-weight: bold;
-}
-
-/* container */
-
-.container {
-  width: 70%;
-  margin: auto;
-  margin-top: 30px;
-}
-
-/* card layout */
-
-.card {
-  background: white;
-  padding: 20px;
-  margin-bottom: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
-}
-
-/* input fields */
-
-input {
-  padding: 10px;
-  width: 95%;
-  margin-top: 8px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-}
-
-/* buttons */
-
-button {
-  background: #1877f2;
-  color: white;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #166fe5;
-}
-
-/* student card */
-
-.student {
-  border-bottom: 1px solid #ddd;
-  padding: 10px 0;
-}
-
-.actions a {
-  text-decoration: none;
-  margin-right: 10px;
-  font-weight: bold;
-}
-
-.edit {
-  color: #1877f2;
-}
-
-.delete {
-  color: red;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="header">
-Student CRUD Dashboard
-</div>
-
-<div class="container">
-
-<div class="card">
-
-<h2>Add Student</h2>
-
-<form method="POST" action="/add">
-
-Name:
-<input name="stud_name" required>
-
-Address:
-<input name="stud_address" required>
-
-Age:
-<input name="age" required>
-
-<button>Add Student</button>
-
-</form>
-
-</div>
-
-
-<div class="card">
-
-<h2>Student List</h2>
-`;
-
-    results.forEach(student => {
-
+    results.forEach(s => {
       html += `
-<div class="student">
-
-<b>${student.stud_name}</b><br>
-
-Address: ${student.stud_address}<br>
-
-Age: ${student.age}
-
-<div class="actions">
-
-<a class="edit" href="/edit/${student.stud_id}">Edit</a>
-
-<a class="delete" href="/delete/${student.stud_id}">
-Delete
-</a>
-
-</div>
-
-</div>
-`;
+        <div>
+          <b>${s.stud_name}</b><br>
+          ${s.stud_address} | ${s.age}<br>
+          <a href="/edit/${s.stud_id}">Edit</a>
+          <a href="/delete/${s.stud_id}">Delete</a>
+          <hr>
+        </div>
+      `;
     });
 
     html += `
+      </div>
+    </div>
 
-</div>
-</div>
-
-</body>
-</html>
-`;
+    </body>
+    </html>
+    `;
 
     res.send(html);
-
   });
-
 });
 
-
-// ADD
+// =====================
+// CREATE
+// =====================
 app.post("/add", (req, res) => {
-
   const { stud_name, stud_address, age } = req.body;
 
   db.query(
     "INSERT INTO students (stud_name, stud_address, age) VALUES (?, ?, ?)",
     [stud_name, stud_address, age],
-    () => res.redirect("/")
-  );
-
-});
-
-
-// EDIT PAGE
-app.get("/edit/:id", (req, res) => {
-
-  const id = req.params.id;
-
-  db.query(
-    "SELECT * FROM students WHERE stud_id = ?",
-    [id],
-    (err, results) => {
-
-      const student = results[0];
-
-      res.send(`
-
-<html>
-
-<style>
-
-body {
-  font-family: Arial;
-  background: #f0f2f5;
-}
-
-.card {
-  background: white;
-  width: 40%;
-  margin: auto;
-  margin-top: 80px;
-  padding: 25px;
-  border-radius: 10px;
-  box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
-}
-
-input {
-  width: 95%;
-  padding: 10px;
-  margin-top: 10px;
-}
-
-button {
-  background: #1877f2;
-  color: white;
-  border: none;
-  padding: 10px;
-  margin-top: 10px;
-}
-
-</style>
-
-<div class="card">
-
-<h2>Edit Student</h2>
-
-<form method="POST" action="/update/${id}">
-
-Name:
-<input name="stud_name" value="${student.stud_name}">
-
-Address:
-<input name="stud_address" value="${student.stud_address}">
-
-Age:
-<input name="age" value="${student.age}">
-
-<button>Update</button>
-
-</form>
-
-</div>
-
-</html>
-`);
-
+    (err) => {
+      if (err) return res.send(err.message);
+      res.redirect("/");
     }
   );
-
 });
 
+// =====================
+// EDIT PAGE
+// =====================
+app.get("/edit/:id", (req, res) => {
+  const id = req.params.id;
 
+  db.query("SELECT * FROM students WHERE stud_id=?", [id], (err, results) => {
+    if (err) return res.send(err.message);
+
+    const s = results[0];
+
+    res.send(`
+      <html>
+      <body style="font-family:Arial;background:#f0f2f5;">
+        <div style="width:40%;margin:auto;margin-top:80px;background:white;padding:20px;border-radius:10px;">
+          <h2>Edit Student</h2>
+
+          <form method="POST" action="/update/${id}">
+            <input name="stud_name" value="${s.stud_name}" style="width:100%;padding:10px;margin:5px 0;">
+            <input name="stud_address" value="${s.stud_address}" style="width:100%;padding:10px;margin:5px 0;">
+            <input name="age" value="${s.age}" style="width:100%;padding:10px;margin:5px 0;">
+            <button>Update</button>
+          </form>
+
+        </div>
+      </body>
+      </html>
+    `);
+  });
+});
+
+// =====================
 // UPDATE
+// =====================
 app.post("/update/:id", (req, res) => {
-
   const id = req.params.id;
   const { stud_name, stud_address, age } = req.body;
 
   db.query(
     "UPDATE students SET stud_name=?, stud_address=?, age=? WHERE stud_id=?",
     [stud_name, stud_address, age, id],
-    () => res.redirect("/")
+    (err) => {
+      if (err) return res.send(err.message);
+      res.redirect("/");
+    }
   );
-
 });
 
-
+// =====================
 // DELETE
+// =====================
 app.get("/delete/:id", (req, res) => {
-
   const id = req.params.id;
 
   db.query(
     "DELETE FROM students WHERE stud_id=?",
     [id],
-    () => res.redirect("/")
+    (err) => {
+      if (err) return res.send(err.message);
+      res.redirect("/");
+    }
   );
-
 });
 
-
+// =====================
 // START SERVER
+// =====================
 app.listen(PORT, () => {
-  console.log("Server running on port 3000");
+  console.log("🚀 Server running on port " + PORT);
 });

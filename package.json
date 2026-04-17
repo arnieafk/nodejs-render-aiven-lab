@@ -1,7 +1,6 @@
 {
-  "name": "app",
+  "name": "nodejs-render-aiven-lab",
   "version": "1.0.0",
-  "description": "",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -19,7 +18,10 @@
     "url": "https://github.com/arnieafk/nodejs-render-aiven-lab/issues"
   },
   "homepage": "https://github.com/arnieafk/nodejs-render-aiven-lab#readme",
-  "dependencies": {
-    "dotenv": "^17.4.2"
+    "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.4.5"
   }
 }

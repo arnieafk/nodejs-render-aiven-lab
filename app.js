@@ -34,30 +34,6 @@ db.connect((err) => {
   }
 });
 
-const express = require("express");
-const mysql = require("mysql2");
-const bodyParser = require("body-parser");
-
-const app = express();
-const PORT = 3000;
-
-app.use(bodyParser.urlencoded({ extended: false }));
-
-// database connection
-const db = mysql.createConnection({
-  host: "your_hostname",
-  user: "your_username",
-  password: "your_password",
-  database: "aiven_database",
-  port: 23687
-});
-
-db.connect(err => {
-  if (err) console.log("Database connection failed");
-  else console.log("Connected to MySQL");
-});
-
-
 // MAIN PAGE
 app.get("/", (req, res) => {
 

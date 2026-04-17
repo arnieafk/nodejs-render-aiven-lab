@@ -199,5 +199,5 @@ app.get("/delete/:id", (req, res) => {
 // START SERVER
 // =====================
 app.listen(PORT, () => {
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 10000;
 });
